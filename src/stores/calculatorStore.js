@@ -212,6 +212,8 @@ export const useCalculatorStore = defineStore('calculator', {
       
       const result = {
         allocationDetails: [],
+        billBreakdown: [],
+        billTypeSummary: [],
         totalBill: this.totalBillAmount,
         calculationDate: new Date().toISOString()
       }
@@ -235,6 +237,10 @@ export const useCalculatorStore = defineStore('calculator', {
         default:
           result.allocationDetails = this.calculateByArea()
       }
+
+      const { billBreakdown, billTypeSummary } = this.calculateBillBreakdown(result.allocationDetails)
+      result.billBreakdown = billBreakdown
+      result.billTypeSummary = billTypeSummary
       
       // 保存计算结果
       this.calculationResult = result
@@ -243,6 +249,41 @@ export const useCalculatorStore = defineStore('calculator', {
       this.saveToHistory(result)
       
       return { success: true }
+    },
+
+    // 按费用类型拆分每个租户应缴金额
+    calculateBillBreakdown(allocationDetails) {
+      const billBreakdown = allocationDetails.map(item => {
+        const breakdown = this.bills.map(bill => ({
+          billId: bill.id,
+          billName: bill.name,
+          amount: parseFloat(bill.amount || 0) * item.ratio
+        }))
+
+        const subtotal = breakdown.reduce((sum, row) => sum + row.amount, 0)
+        return {
+          tenantId: item.tenantId,
+          tenantName: item.tenantName,
+          breakdown,
+          subtotal
+        }
+      })
+
+      const billTypeSummary = this.bills.map(bill => {
+        const totalAllocated = billBreakdown.reduce((sum, tenantItem) => {
+          const target = tenantItem.breakdown.find(row => row.billId === bill.id)
+          return sum + (target ? target.amount : 0)
+        }, 0)
+
+        return {
+          billId: bill.id,
+          billName: bill.name,
+          totalAmount: parseFloat(bill.amount || 0),
+          totalAllocated
+        }
+      })
+
+      return { billBreakdown, billTypeSummary }
     },
     
     // 按面积分摊
@@ -367,6 +408,8 @@ export const useCalculatorStore = defineStore('calculator', {
         bills: [...this.bills],
         allocationMethod: this.allocationMethod,
         details: result.allocationDetails,
+        billBreakdown: result.billBreakdown,
+        billTypeSummary: result.billTypeSummary,
         calculationDate: new Date().toLocaleString()
       }
       

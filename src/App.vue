@@ -72,6 +72,8 @@ const loadHistoryItem = (item) => {
   // 显示结果
   store.calculationResult = {
     allocationDetails: item.details,
+    billBreakdown: item.billBreakdown || [],
+    billTypeSummary: item.billTypeSummary || [],
     totalBill: item.totalBill,
     calculationDate: item.calculationDate
   }

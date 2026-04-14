@@ -104,6 +104,8 @@ const chartOptions = computed(() => {
   }
 })
 
+const activeBills = computed(() => store.bills.filter(bill => parseFloat(bill.amount || 0) > 0))
+
 // 获取分摊方式文本
 const getAllocationMethodText = (basis) => {
   const mapping = {
@@ -246,6 +248,33 @@ const printAsPDF = () => {
     '          <td><strong>100%</strong></td>',
     '          <td></td>',
     '          <td></td>',
+    '        </tr>',
+    '      </tbody>',
+    '    </table>',
+    '    <h2>费用拆分明细</h2>',
+    '    <table class="report-table">',
+    '      <thead>',
+    '        <tr>',
+    '          <th>租户</th>',
+    ...activeBills.value.map(bill => `          <th>${bill.name} (元)</th>`),
+    '          <th>合计 (元)</th>',
+    '        </tr>',
+    '      </thead>',
+    '      <tbody>',
+    ...props.result.billBreakdown.map(item => [
+      '        <tr>',
+      `          <td>${item.tenantName}</td>`,
+      ...activeBills.value.map(bill => {
+        const row = item.breakdown.find(part => part.billId === bill.id)
+        return `          <td class="amount">¥${(row ? row.amount : 0).toFixed(2)}</td>`
+      }),
+      `          <td class="amount">¥${item.subtotal.toFixed(2)}</td>`,
+      '        </tr>'
+    ].join('\n')),
+    '        <tr class="total-row">',
+    '          <td><strong>总计</strong></td>',
+    ...activeBills.value.map(bill => `          <td class="amount"><strong>¥${parseFloat(bill.amount || 0).toFixed(2)}</strong></td>`),
+    `          <td class="amount"><strong>¥${props.result.totalBill.toFixed(2)}</strong></td>`,
     '        </tr>',
     '      </tbody>',
     '    </table>',
@@ -470,6 +499,39 @@ const exportAsImage = () => {
               <td><strong class="text-primary">¥{{ result.totalBill.toFixed(2) }}</strong></td>
               <td><strong>100%</strong></td>
               <td></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="mt-4 mb-3">
+        <i class="fas fa-receipt me-2"></i>
+        费用拆分明细
+      </h3>
+
+      <div class="table-responsive">
+        <table class="result-table">
+          <thead>
+            <tr>
+              <th>租户</th>
+              <th v-for="bill in activeBills" :key="`bill-head-${bill.id}`">{{ bill.name }}</th>
+              <th>合计</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in result.billBreakdown || []" :key="`breakdown-${item.tenantId}`">
+              <td>{{ item.tenantName }}</td>
+              <td v-for="bill in activeBills" :key="`bill-cell-${item.tenantId}-${bill.id}`" class="fw-bold text-success">
+                ¥{{ ((item.breakdown.find(part => part.billId === bill.id)?.amount) || 0).toFixed(2) }}
+              </td>
+              <td><strong class="text-primary">¥{{ item.subtotal.toFixed(2) }}</strong></td>
+            </tr>
+            <tr class="total-row">
+              <td><strong>总计</strong></td>
+              <td v-for="bill in activeBills" :key="`bill-total-${bill.id}`">
+                <strong class="text-primary">¥{{ parseFloat(bill.amount || 0).toFixed(2) }}</strong>
+              </td>
+              <td><strong class="text-primary">¥{{ result.totalBill.toFixed(2) }}</strong></td>
             </tr>
           </tbody>
         </table>
