@@ -25,7 +25,7 @@ const chartData = computed(() => {
     labels: props.result.allocationDetails.map(item => item.tenantName),
     datasets: [
       {
-        label: '应缴费用 (元)',
+        label: '应缴费用 (欧元)',
         backgroundColor: [
           '#6366f1',
           '#8b5cf6',
@@ -84,7 +84,7 @@ const chartOptions = computed(() => {
         },
         title: {
           display: true,
-          text: '金额 (元)',
+          text: '金额 (欧元)',
           color: '#64748b',
           font: {
             size: 14,
@@ -129,7 +129,7 @@ const printAsPDF = () => {
     '<!DOCTYPE html>',
     '<html>',
     '<head>',
-    '  <title>房租费用分摊报表</title>',
+    '  <title>Nebenkosten分摊报表</title>',
     '  <meta charset="UTF-8">',
     '  <style>',
     '    body {',
@@ -209,7 +209,7 @@ const printAsPDF = () => {
     '</head>',
     '<body>',
     '  <div class="report-header">',
-    '    <h1>房租费用分摊报表</h1>',
+    '    <h1>Nebenkosten分摊报表</h1>',
     '    <div class="report-meta">',
     `      <p><strong>房屋地址：</strong>${store.selectedPropertyAddress}</p>`,
     `      <p><strong>计费周期：</strong>${store.startDate} 至 ${store.endDate}</p>`,
@@ -224,7 +224,7 @@ const printAsPDF = () => {
     '      <thead>',
     '        <tr>',
     '          <th>租户</th>',
-    '          <th>分摊金额 (元)</th>',
+    '          <th>分摊金额 (欧元)</th>',
     '          <th>占比</th>',
     '          <th>分摊依据</th>',
     '          <th>说明</th>',
@@ -273,7 +273,7 @@ const printAsPDF = () => {
 // 导出为图片（结构化报表形式）
 const exportAsImage = () => {
   try {
-    // 创建一个隐藏的canvas元素用于绘制报表
+    // 创建一个隐藏的canvas欧元素用于绘制报表
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
     
@@ -291,7 +291,7 @@ const exportAsImage = () => {
     ctx.fillStyle = document.body.classList.contains('dark-mode') ? '#ffffff' : '#000000'
     ctx.font = 'bold 24px Arial'
     ctx.textAlign = 'center'
-    ctx.fillText('房租费用分摊报表', width/2, 40)
+    ctx.fillText('Nebenkosten分摊报表', width/2, 40)
     
     // 基本信息
     ctx.font = '16px Arial'
@@ -309,7 +309,7 @@ const exportAsImage = () => {
     // 绘制表格
     const rowHeight = 30
     const startY = 210
-    const columns = ['租户', '分摊金额(元)', '占比', '分摊依据', '说明']
+    const columns = ['租户', '分摊金额(欧元)', '占比', '分摊依据', '说明']
     const columnWidths = [80, 100, 60, 100, 260]
     
     // 表格标题

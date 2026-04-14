@@ -513,9 +513,9 @@ createApp({
                 <th>姓名</th>
                 <th>${allocationMode.value === 'days' ? '居住天数' : (allocationMode.value === 'area' ? '面积(㎡)' : '比例(%)')}</th>
                 <th>占比</th>
-                <th>基础电费(元)</th>
-                <th>调整(元)</th>
-                <th>应缴电费(元)</th>
+                <th>基础电费(欧元)</th>
+                <th>调整(欧元)</th>
+                <th>应缴电费(欧元)</th>
               </tr>
             </thead>
             <tbody>
@@ -595,7 +595,7 @@ createApp({
         data: {
           labels: data.items.map(item => item.name),
           datasets: [{
-            label: '应缴电费 (元)',
+            label: '应缴电费 (欧元)',
             data: data.items.map(item => item.finalFee),
             backgroundColor: backgroundColors,
             borderColor: borderColors,
@@ -639,7 +639,7 @@ createApp({
               beginAtZero: true,
               title: {
                 display: true,
-                text: '金额 (元)'
+                text: '金额 (欧元)'
               }
             },
             x: {

@@ -100,7 +100,7 @@ onMounted(() => {
           <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
             <label class="form-label">
               <i :class="bill.icon"></i>
-              {{ bill.name }} (元)
+              {{ bill.name }} (欧元)
             </label>
             <input 
               type="number" 

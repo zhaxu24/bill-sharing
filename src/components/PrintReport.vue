@@ -1,7 +1,7 @@
 <template>
   <div class="print-report" ref="printReport">
     <div class="report-header">
-      <h1>房租费用分摊报表</h1>
+      <h1>Nebenkosten分摊报表</h1>
       <div class="report-meta">
         <p><strong>计费周期：</strong>{{ store.startDate }} 至 {{ store.endDate }}</p>
         <p><strong>分摊方式：</strong>{{ allocationMethodText }}</p>
@@ -15,7 +15,7 @@
         <thead>
           <tr>
             <th>租户</th>
-            <th>分摊金额 (元)</th>
+            <th>分摊金额 (欧元)</th>
             <th>占比</th>
             <th>分摊依据</th>
             <th>说明</th>
