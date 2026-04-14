@@ -4,9 +4,7 @@ export const useCalculatorStore = defineStore('calculator', {
   state: () => ({
     // 费用基础数据
     bills: [
-      { id: 'electricity', name: '电费', icon: 'fas fa-bolt', amount: 0 },
-      { id: 'water', name: '水费', icon: 'fas fa-tint', amount: 0 },
-      { id: 'heating', name: '暖气费', icon: 'fas fa-fire', amount: 0 }
+      { id: 'electricity', name: '电费', icon: 'fas fa-bolt', amount: 0 }
     ],
     startDate: '',
     endDate: '',
