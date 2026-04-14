@@ -74,26 +74,26 @@ export const useCalculatorStore = defineStore('calculator', {
     },
 
     utilityBillAmount: (state) => {
-      return state.bills
-        .filter(bill => bill.id === 'electricity' || bill.id === 'water')
-        .reduce((sum, bill) => sum + parseFloat(bill.amount || 0), 0)
-    },
-
-    heatingBillAmount: (state) => {
-      const heating = state.bills.find(bill => bill.id === 'heating')
-      return parseFloat(heating?.amount || 0)
+      return state.bills.reduce((sum, bill) => sum + parseFloat(bill.amount || 0), 0)
     }
   },
   
   actions: {
     // 添加费用类型
     addBillType() {
-      // Simplified mode: fixed bill types (electricity, water, heating)
+      const nextId = `custom_${Date.now()}`
+      this.bills.push({
+        id: nextId,
+        name: `费用${this.bills.length + 1}`,
+        icon: 'fas fa-file-invoice-dollar',
+        amount: 0
+      })
     },
     
     // 删除费用类型
     removeBillType(id) {
-      // Simplified mode: fixed bill types (electricity, water, heating)
+      if (this.bills.length <= 1) return
+      this.bills = this.bills.filter(bill => bill.id !== id)
     },
     
     // 更新费用金额
@@ -285,8 +285,9 @@ export const useCalculatorStore = defineStore('calculator', {
       if (new Date(this.startDate) >= new Date(this.endDate)) return false
       if (!this.selectedPropertyAddress) return false
       
+      if (this.totalBillAmount <= 0) return false
+
       if (this.allocationMethod === 'heating_room') {
-        if (this.heatingBillAmount <= 0) return false
         if (parseFloat(this.heatingCommonConsumption || 0) < 0) return false
         if (!Array.isArray(this.heatingRooms) || this.heatingRooms.length === 0) return false
         for (const room of this.heatingRooms) {
@@ -303,16 +304,17 @@ export const useCalculatorStore = defineStore('calculator', {
         return true
       }
 
-      if (this.utilityBillAmount <= 0) return false
-
-      // 验证租户数据
-      if (this.tenants.length === 0) return false
-      for (const tenant of this.tenants) {
-        if (!tenant.name) return false
-        if (!tenant.roomArea || parseFloat(tenant.roomArea) <= 0) return false
-        if (!tenant.occupancyStartDate || !tenant.occupancyEndDate) return false
-        if (new Date(tenant.occupancyStartDate) > new Date(tenant.occupancyEndDate)) return false
-        if (!tenant.occupancyDays || parseInt(tenant.occupancyDays) <= 0) return false
+      // 按居住天数分摊：按房间 + 房间内租期
+      if (!Array.isArray(this.heatingRooms) || this.heatingRooms.length === 0) return false
+      for (const room of this.heatingRooms) {
+        if (!room.name) return false
+        if (!Array.isArray(room.occupants) || room.occupants.length === 0) return false
+        for (const occupant of room.occupants) {
+          if (!occupant.tenantName) return false
+          if (!occupant.startDate || !occupant.endDate) return false
+          if (new Date(occupant.startDate) > new Date(occupant.endDate)) return false
+          if (!occupant.occupancyDays || parseInt(occupant.occupancyDays) <= 0) return false
+        }
       }
       
       return true
@@ -335,12 +337,12 @@ export const useCalculatorStore = defineStore('calculator', {
       let targetBills = []
       if (this.allocationMethod === 'heating_room') {
         result.allocationDetails = this.calculateByHeatingRoom()
-        result.totalBill = this.heatingBillAmount
-        targetBills = this.bills.filter(bill => bill.id === 'heating')
+        result.totalBill = this.totalBillAmount
+        targetBills = this.bills
       } else {
-        result.allocationDetails = this.calculateByTime(this.utilityBillAmount)
-        result.totalBill = this.utilityBillAmount
-        targetBills = this.bills.filter(bill => bill.id === 'electricity' || bill.id === 'water')
+        result.allocationDetails = this.calculateByTime(this.totalBillAmount)
+        result.totalBill = this.totalBillAmount
+        targetBills = this.bills
       }
 
       const { billBreakdown, billTypeSummary } = this.calculateBillBreakdown(result.allocationDetails, targetBills)
@@ -363,9 +365,9 @@ export const useCalculatorStore = defineStore('calculator', {
         return sum + parseFloat(room.consumption || 0)
       }, 0) + parseFloat(this.heatingCommonConsumption || 0)
 
-      if (totalShares <= 0) return this.calculateByTime(this.heatingBillAmount)
+      if (totalShares <= 0) return this.calculateByTime(this.totalBillAmount)
 
-      const unitPrice = this.heatingBillAmount / totalShares
+      const unitPrice = this.totalBillAmount / totalShares
       const tenantMap = new Map()
 
       this.heatingRooms.forEach(room => {
@@ -397,7 +399,7 @@ export const useCalculatorStore = defineStore('calculator', {
         tenantId: idx + 1,
         tenantName: item.tenantName,
         amount: item.amount,
-        ratio: this.heatingBillAmount > 0 ? item.amount / this.heatingBillAmount : 0,
+        ratio: this.totalBillAmount > 0 ? item.amount / this.totalBillAmount : 0,
         allocationBasis: '按房间暖气+租期分配',
         details: item.roomDetails.join('；')
       }))
@@ -438,116 +440,38 @@ export const useCalculatorStore = defineStore('calculator', {
       return { billBreakdown, billTypeSummary }
     },
     
-    // 按面积分摊
-    calculateByArea() {
-      return this.tenants.map(tenant => {
-        const areaRatio = parseFloat(tenant.roomArea) / this.totalArea
-        return {
-          tenantId: tenant.id,
-          tenantName: tenant.name,
-          amount: this.totalBillAmount * areaRatio,
-          ratio: areaRatio,
-          allocationBasis: '按面积分配',
-          details: `房间面积: ${tenant.roomArea}平方米 (占比${(areaRatio * 100).toFixed(1)}%)`
-        }
-      })
-    },
-    
-    // 按人头分摊
-    calculateByHeadcount() {
-      const perPersonAmount = this.totalBillAmount / this.tenants.length
-      return this.tenants.map(tenant => ({
-        tenantId: tenant.id,
-        tenantName: tenant.name,
-        amount: perPersonAmount,
-        ratio: 1 / this.tenants.length,
-        allocationBasis: '按人头分配',
-        details: '平均分配'
-      }))
-    },
-    
-    // 按时间分摊
+    // 按时间分摊（按房间平均，再在房间内按租期）
     calculateByTime(targetAmount = this.utilityBillAmount) {
-      return this.tenants.map(tenant => {
-        const timeRatio = parseInt(tenant.occupancyDays) / this.totalOccupancyDays
-        return {
-          tenantId: tenant.id,
-          tenantName: tenant.name,
-          amount: targetAmount * timeRatio,
-          ratio: timeRatio,
-          allocationBasis: '按时长分配',
-          details: `居住天数: ${tenant.occupancyDays}天 (占比${(timeRatio * 100).toFixed(1)}%)`
-        }
+      const roomCount = this.heatingRooms.length || 1
+      const roomCost = targetAmount / roomCount
+      const tenantMap = new Map()
+
+      this.heatingRooms.forEach(room => {
+        const totalRoomDays = room.occupants.reduce((sum, o) => sum + parseInt(o.occupancyDays || 0), 0)
+        const safeRoomDays = totalRoomDays > 0 ? totalRoomDays : 1
+
+        room.occupants.forEach(occupant => {
+          const inRoomRatio = parseInt(occupant.occupancyDays || 0) / safeRoomDays
+          const amount = roomCost * inRoomRatio
+          const key = occupant.tenantName.trim()
+
+          if (!tenantMap.has(key)) {
+            tenantMap.set(key, { tenantName: key, amount: 0, roomDetails: [] })
+          }
+          const item = tenantMap.get(key)
+          item.amount += amount
+          item.roomDetails.push(`${room.name}房 ${occupant.startDate}~${occupant.endDate} (${occupant.occupancyDays}天)`)
+        })
       })
-    },
-    
-    // 按设备使用分摊
-    calculateByDevice() {
-      // 计算每个租户的设备总功耗
-      const tenantDeviceConsumptions = this.tenants.map(tenant => {
-        const totalDevicePower = tenant.devices.reduce((sum, device) => 
-          sum + (parseFloat(device.power) * parseFloat(device.usageHours)), 0)
-        return {
-          tenantId: tenant.id,
-          totalDevicePower: totalDevicePower
-        }
-      })
-      
-      // 计算总功耗
-      const totalDevicePower = tenantDeviceConsumptions.reduce((sum, item) => 
-        sum + item.totalDevicePower, 0)
-      
-      if (totalDevicePower === 0) {
-        // 如果没有设备数据，回退到面积分配
-        return this.calculateByArea()
-      }
-      
-      return this.tenants.map(tenant => {
-        const deviceData = tenantDeviceConsumptions.find(d => d.tenantId === tenant.id)
-        const ratio = deviceData.totalDevicePower / totalDevicePower
-        return {
-          tenantId: tenant.id,
-          tenantName: tenant.name,
-          amount: this.totalBillAmount * ratio,
-          ratio: ratio,
-          allocationBasis: '按设备使用分配',
-          details: `设备总功耗: ${deviceData.totalDevicePower.toFixed(2)}瓦时 (占比${(ratio * 100).toFixed(1)}%)`
-        }
-      })
-    },
-    
-    // 自定义比例分摊
-    calculateByCustomRatio() {
-      // 确保自定义比例数组长度与租户数量匹配
-      while (this.customRatios.length < this.tenants.length) {
-        this.customRatios.push(0)
-      }
-      
-      while (this.customRatios.length > this.tenants.length) {
-        this.customRatios.pop()
-      }
-      
-      // 标准化比例，确保总和为1
-      const ratioSum = this.customRatios.reduce((sum, ratio) => sum + parseFloat(ratio || 0), 0)
-      
-      // 如果总和为0，则平均分配
-      if (ratioSum === 0) {
-        return this.calculateByHeadcount()
-      }
-      
-      const normalizedRatios = this.customRatios.map(ratio => parseFloat(ratio || 0) / ratioSum)
-      
-      return this.tenants.map((tenant, index) => {
-        const ratio = normalizedRatios[index] || 0
-        return {
-          tenantId: tenant.id,
-          tenantName: tenant.name,
-          amount: this.totalBillAmount * ratio,
-          ratio: ratio,
-          allocationBasis: '自定义比例分配',
-          details: `自定义比例: ${(ratio * 100).toFixed(1)}%`
-        }
-      })
+
+      return Array.from(tenantMap.values()).map((item, idx) => ({
+        tenantId: idx + 1,
+        tenantName: item.tenantName,
+        amount: item.amount,
+        ratio: targetAmount > 0 ? item.amount / targetAmount : 0,
+        allocationBasis: '按房间平均+租期分配',
+        details: item.roomDetails.join('；')
+      }))
     },
     
     // 保存到历史记录
