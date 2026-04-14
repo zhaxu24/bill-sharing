@@ -12,7 +12,9 @@ const toastMessage = ref('')
 const toastType = ref('success')
 const activeTab = ref('calculator')
 const importFileInput = ref(null)
-const DATA_SCHEMA_VERSION = '1.0.0'
+const DATA_SCHEMA_VERSION = '1.1.0'
+
+const clone = (value) => JSON.parse(JSON.stringify(value))
 
 // 切换暗黑模式
 const toggleDarkMode = () => {
@@ -52,33 +54,48 @@ const buildSnapshot = () => {
     exportedAt: new Date().toISOString(),
     appName: 'bill-sharing',
     data: {
-      bills: store.bills,
+      propertyAddressOptions: clone(store.propertyAddressOptions),
+      bills: clone(store.bills),
       startDate: store.startDate,
       endDate: store.endDate,
       selectedPropertyAddress: store.selectedPropertyAddress,
-      heatingCommonConsumption: store.heatingCommonConsumption,
-      heatingRooms: store.heatingRooms,
-      tenants: store.tenants,
+      heatingCommonConsumption: parseFloat(store.heatingCommonConsumption || 0),
+      heatingRooms: clone(store.heatingRooms),
+      tenants: clone(store.tenants),
       allocationMethod: store.allocationMethod,
-      customRatios: store.customRatios,
-      calculationHistory: store.calculationHistory,
-      calculationResult: store.calculationResult
+      customRatios: clone(store.customRatios),
+      calculationHistory: clone(store.calculationHistory),
+      calculationResult: clone(store.calculationResult)
     }
   }
 }
 
 const applySnapshot = (payload) => {
-  store.bills = payload.bills || []
+  if (Array.isArray(payload.propertyAddressOptions) && payload.propertyAddressOptions.length > 0) {
+    store.propertyAddressOptions = payload.propertyAddressOptions
+  }
+
+  store.bills = Array.isArray(payload.bills) && payload.bills.length > 0 ? payload.bills : store.bills
   store.startDate = payload.startDate || ''
   store.endDate = payload.endDate || ''
   store.selectedPropertyAddress = payload.selectedPropertyAddress || store.propertyAddressOptions[0]
-  store.heatingCommonConsumption = payload.heatingCommonConsumption || 0
-  store.heatingRooms = payload.heatingRooms || store.heatingRooms
-  store.tenants = payload.tenants || []
-  store.allocationMethod = payload.allocationMethod || 'area'
-  store.customRatios = payload.customRatios || []
-  store.calculationHistory = payload.calculationHistory || []
+  store.heatingCommonConsumption = parseFloat(payload.heatingCommonConsumption || 0)
+  store.heatingRooms = Array.isArray(payload.heatingRooms) && payload.heatingRooms.length > 0
+    ? payload.heatingRooms
+    : store.heatingRooms
+  store.tenants = Array.isArray(payload.tenants) ? payload.tenants : []
+  store.allocationMethod = payload.allocationMethod || 'time'
+  store.customRatios = Array.isArray(payload.customRatios) ? payload.customRatios : []
+  store.calculationHistory = Array.isArray(payload.calculationHistory) ? payload.calculationHistory : []
   store.calculationResult = payload.calculationResult || null
+
+  // Ensure imported room occupants have occupancyDays
+  store.heatingRooms.forEach(room => {
+    room.occupants = Array.isArray(room.occupants) ? room.occupants : []
+    room.occupants.forEach(occupant => {
+      occupant.occupancyDays = store.calculateDaysBetween(occupant.startDate, occupant.endDate)
+    })
+  })
 
   localStorage.setItem('electricityCalculationHistory', JSON.stringify(store.calculationHistory))
   showResult.value = !!store.calculationResult
@@ -114,11 +131,11 @@ const importDataSnapshot = async (event) => {
     const raw = await file.text()
     const parsed = JSON.parse(raw)
 
-    if (!parsed.schemaVersion || !parsed.data) {
+    if (!parsed.data) {
       throw new Error('Invalid data file format.')
     }
 
-    if (parsed.schemaVersion !== DATA_SCHEMA_VERSION) {
+    if (parsed.schemaVersion && !String(parsed.schemaVersion).startsWith('1.')) {
       throw new Error(`Unsupported schema version: ${parsed.schemaVersion}`)
     }
 

@@ -110,6 +110,33 @@ const activeBills = computed(() => {
   return store.bills.filter(bill => activeIds.has(bill.id))
 })
 
+const calculationNotes = computed(() => {
+  const basis = props.result?.allocationDetails?.[0]?.allocationBasis || ''
+  const roomCount = store.heatingRooms?.length || 0
+
+  if (basis === '按房间暖气+租期分配') {
+    const roomConsumption = (store.heatingRooms || []).reduce((sum, room) => sum + parseFloat(room.consumption || 0), 0)
+    const common = parseFloat(store.heatingCommonConsumption || 0)
+    const totalShares = roomConsumption + common
+    const unitPrice = totalShares > 0 ? props.result.totalBill / totalShares : 0
+    return [
+      `总费用 €${props.result.totalBill.toFixed(2)}，总暖气份数 ${totalShares.toFixed(2)}，每份单价 €${unitPrice.toFixed(4)}。`,
+      `公共区域消耗 ${common.toFixed(2)} 份，按 ${roomCount} 个房间平均分摊。`,
+      '每个房间先算房间总费用，再按房间内各租客租住天数比例分摊。'
+    ]
+  }
+
+  if (basis === '按房间平均+租期分配') {
+    const basePerRoom = roomCount > 0 ? props.result.totalBill / roomCount : 0
+    return [
+      `总费用 €${props.result.totalBill.toFixed(2)} 在 ${roomCount} 个房间之间平均分配，每房间基础费用 €${basePerRoom.toFixed(2)}。`,
+      '每个房间内，再按租客租住天数占该房间总天数的比例分配。'
+    ]
+  }
+
+  return ['按当前分摊方式计算，具体依据见下方租户分摊明细。']
+})
+
 // 获取分摊方式文本
 const getAllocationMethodText = (basis) => {
   const mapping = {
@@ -167,6 +194,17 @@ const printAsPDF = () => {
     '    .report-content h2 {',
     '      color: #334155;',
     '      margin: 20px 0;',
+    '    }',
+    '    .report-notes {',
+    '      background: #f8fafc;',
+    '      border: 1px solid #e2e8f0;',
+    '      border-radius: 8px;',
+    '      padding: 12px 16px;',
+    '      margin: 16px 0 24px 0;',
+    '    }',
+    '    .report-notes li {',
+    '      margin: 6px 0;',
+    '      color: #334155;',
     '    }',
     '    .report-table {',
     '      width: 100%;',
@@ -227,6 +265,10 @@ const printAsPDF = () => {
     '  </div>',
     '  ',
     '  <div class="report-content">',
+    '    <h2>计算说明</h2>',
+    '    <ul class="report-notes">',
+    ...calculationNotes.value.map(note => `      <li>${note}</li>`),
+    '    </ul>',
     '    <h2>租户分摊明细</h2>',
     '    <table class="report-table">',
     '      <thead>',
