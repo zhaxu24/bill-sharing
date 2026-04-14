@@ -104,7 +104,11 @@ const chartOptions = computed(() => {
   }
 })
 
-const activeBills = computed(() => store.bills.filter(bill => parseFloat(bill.amount || 0) > 0))
+const activeBills = computed(() => {
+  const summary = props.result?.billTypeSummary || []
+  const activeIds = new Set(summary.filter(item => parseFloat(item.totalAmount || 0) > 0).map(item => item.billId))
+  return store.bills.filter(bill => activeIds.has(bill.id))
+})
 
 // 获取分摊方式文本
 const getAllocationMethodText = (basis) => {

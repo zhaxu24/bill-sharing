@@ -4,12 +4,9 @@ export const useCalculatorStore = defineStore('calculator', {
   state: () => ({
     // 费用基础数据
     bills: [
-      {
-        id: 'electricity',
-        name: '电费',
-        icon: 'fas fa-bolt',
-        amount: 0
-      }
+      { id: 'electricity', name: '电费', icon: 'fas fa-bolt', amount: 0 },
+      { id: 'water', name: '水费', icon: 'fas fa-tint', amount: 0 },
+      { id: 'heating', name: '暖气费', icon: 'fas fa-fire', amount: 0 }
     ],
     startDate: '',
     endDate: '',
@@ -54,7 +51,7 @@ export const useCalculatorStore = defineStore('calculator', {
     ],
     
     // 分摊设置
-    allocationMethod: 'area', // 'area', 'headcount', 'time', 'device', 'custom', 'heating_room'
+    allocationMethod: 'time', // 'time', 'heating_room'
     customRatios: [0.5, 0.5],
     calculationHistory: [],
     
@@ -74,39 +71,29 @@ export const useCalculatorStore = defineStore('calculator', {
     // 获取总费用
     totalBillAmount: (state) => {
       return state.bills.reduce((sum, bill) => sum + parseFloat(bill.amount || 0), 0)
+    },
+
+    utilityBillAmount: (state) => {
+      return state.bills
+        .filter(bill => bill.id === 'electricity' || bill.id === 'water')
+        .reduce((sum, bill) => sum + parseFloat(bill.amount || 0), 0)
+    },
+
+    heatingBillAmount: (state) => {
+      const heating = state.bills.find(bill => bill.id === 'heating')
+      return parseFloat(heating?.amount || 0)
     }
   },
   
   actions: {
     // 添加费用类型
     addBillType() {
-      const billTypes = [
-        { id: 'water', name: '水费', icon: 'fas fa-tint' },
-        { id: 'heating', name: '暖气费', icon: 'fas fa-fire' },
-        { id: 'property', name: '物业费', icon: 'fas fa-home' },
-        { id: 'internet', name: '网络费', icon: 'fas fa-wifi' },
-        { id: 'other', name: '其他费用', icon: 'fas fa-question-circle' }
-      ]
-      
-      const existingIds = this.bills.map(bill => bill.id)
-      const availableTypes = billTypes.filter(type => !existingIds.includes(type.id))
-      
-      if (availableTypes.length > 0) {
-        const newType = availableTypes[0]
-        this.bills.push({
-          id: newType.id,
-          name: newType.name,
-          icon: newType.icon,
-          amount: 0
-        })
-      }
+      // Simplified mode: fixed bill types (electricity, water, heating)
     },
     
     // 删除费用类型
     removeBillType(id) {
-      if (this.bills.length > 1) {
-        this.bills = this.bills.filter(bill => bill.id !== id)
-      }
+      // Simplified mode: fixed bill types (electricity, water, heating)
     },
     
     // 更新费用金额
@@ -191,6 +178,36 @@ export const useCalculatorStore = defineStore('calculator', {
       }
     },
 
+    addHeatingRoom() {
+      const roomNumber = this.heatingRooms.length + 1
+      const roomId = `room_${Date.now()}_${roomNumber}`
+      const startDate = this.startDate || ''
+      const endDate = this.endDate || ''
+      this.heatingRooms.push({
+        id: roomId,
+        name: `房间${roomNumber}`,
+        consumption: 0,
+        occupants: [{
+          id: 1,
+          tenantName: `r${roomNumber}a1`,
+          startDate,
+          endDate,
+          occupancyDays: this.calculateDaysBetween(startDate, endDate)
+        }]
+      })
+    },
+
+    removeHeatingRoom(roomId) {
+      if (this.heatingRooms.length <= 1) return
+      this.heatingRooms = this.heatingRooms.filter(room => room.id !== roomId)
+    },
+
+    updateHeatingRoomName(roomId, value) {
+      const room = this.heatingRooms.find(r => r.id === roomId)
+      if (!room) return
+      room.name = value
+    },
+
     // 计算日期区间天数（包含起止日期）
     calculateDaysBetween(startDate, endDate) {
       if (!startDate || !endDate) return 0
@@ -264,15 +281,16 @@ export const useCalculatorStore = defineStore('calculator', {
     // 验证输入数据
     validateInput() {
       // 验证必要字段
-      if (this.totalBillAmount <= 0) return false
       if (!this.startDate || !this.endDate) return false
       if (new Date(this.startDate) >= new Date(this.endDate)) return false
       if (!this.selectedPropertyAddress) return false
       
       if (this.allocationMethod === 'heating_room') {
+        if (this.heatingBillAmount <= 0) return false
         if (parseFloat(this.heatingCommonConsumption || 0) < 0) return false
         if (!Array.isArray(this.heatingRooms) || this.heatingRooms.length === 0) return false
         for (const room of this.heatingRooms) {
+          if (!room.name) return false
           if (parseFloat(room.consumption || 0) < 0) return false
           if (!Array.isArray(room.occupants) || room.occupants.length === 0) return false
           for (const occupant of room.occupants) {
@@ -284,6 +302,8 @@ export const useCalculatorStore = defineStore('calculator', {
         }
         return true
       }
+
+      if (this.utilityBillAmount <= 0) return false
 
       // 验证租户数据
       if (this.tenants.length === 0) return false
@@ -308,34 +328,22 @@ export const useCalculatorStore = defineStore('calculator', {
         allocationDetails: [],
         billBreakdown: [],
         billTypeSummary: [],
-        totalBill: this.totalBillAmount,
+        totalBill: 0,
         calculationDate: new Date().toISOString()
       }
-      
-      switch (this.allocationMethod) {
-        case 'area':
-          result.allocationDetails = this.calculateByArea()
-          break
-        case 'headcount':
-          result.allocationDetails = this.calculateByHeadcount()
-          break
-        case 'time':
-          result.allocationDetails = this.calculateByTime()
-          break
-        case 'device':
-          result.allocationDetails = this.calculateByDevice()
-          break
-        case 'custom':
-          result.allocationDetails = this.calculateByCustomRatio()
-          break
-        case 'heating_room':
-          result.allocationDetails = this.calculateByHeatingRoom()
-          break
-        default:
-          result.allocationDetails = this.calculateByArea()
+
+      let targetBills = []
+      if (this.allocationMethod === 'heating_room') {
+        result.allocationDetails = this.calculateByHeatingRoom()
+        result.totalBill = this.heatingBillAmount
+        targetBills = this.bills.filter(bill => bill.id === 'heating')
+      } else {
+        result.allocationDetails = this.calculateByTime(this.utilityBillAmount)
+        result.totalBill = this.utilityBillAmount
+        targetBills = this.bills.filter(bill => bill.id === 'electricity' || bill.id === 'water')
       }
 
-      const { billBreakdown, billTypeSummary } = this.calculateBillBreakdown(result.allocationDetails)
+      const { billBreakdown, billTypeSummary } = this.calculateBillBreakdown(result.allocationDetails, targetBills)
       result.billBreakdown = billBreakdown
       result.billTypeSummary = billTypeSummary
       
@@ -355,9 +363,9 @@ export const useCalculatorStore = defineStore('calculator', {
         return sum + parseFloat(room.consumption || 0)
       }, 0) + parseFloat(this.heatingCommonConsumption || 0)
 
-      if (totalShares <= 0) return this.calculateByHeadcount()
+      if (totalShares <= 0) return this.calculateByTime(this.heatingBillAmount)
 
-      const unitPrice = this.totalBillAmount / totalShares
+      const unitPrice = this.heatingBillAmount / totalShares
       const tenantMap = new Map()
 
       this.heatingRooms.forEach(room => {
@@ -389,16 +397,16 @@ export const useCalculatorStore = defineStore('calculator', {
         tenantId: idx + 1,
         tenantName: item.tenantName,
         amount: item.amount,
-        ratio: this.totalBillAmount > 0 ? item.amount / this.totalBillAmount : 0,
+        ratio: this.heatingBillAmount > 0 ? item.amount / this.heatingBillAmount : 0,
         allocationBasis: '按房间暖气+租期分配',
         details: item.roomDetails.join('；')
       }))
     },
 
     // 按费用类型拆分每个租户应缴金额
-    calculateBillBreakdown(allocationDetails) {
+    calculateBillBreakdown(allocationDetails, targetBills) {
       const billBreakdown = allocationDetails.map(item => {
-        const breakdown = this.bills.map(bill => ({
+        const breakdown = targetBills.map(bill => ({
           billId: bill.id,
           billName: bill.name,
           amount: parseFloat(bill.amount || 0) * item.ratio
@@ -413,7 +421,7 @@ export const useCalculatorStore = defineStore('calculator', {
         }
       })
 
-      const billTypeSummary = this.bills.map(bill => {
+      const billTypeSummary = targetBills.map(bill => {
         const totalAllocated = billBreakdown.reduce((sum, tenantItem) => {
           const target = tenantItem.breakdown.find(row => row.billId === bill.id)
           return sum + (target ? target.amount : 0)
@@ -459,13 +467,13 @@ export const useCalculatorStore = defineStore('calculator', {
     },
     
     // 按时间分摊
-    calculateByTime() {
+    calculateByTime(targetAmount = this.utilityBillAmount) {
       return this.tenants.map(tenant => {
         const timeRatio = parseInt(tenant.occupancyDays) / this.totalOccupancyDays
         return {
           tenantId: tenant.id,
           tenantName: tenant.name,
-          amount: this.totalBillAmount * timeRatio,
+          amount: targetAmount * timeRatio,
           ratio: timeRatio,
           allocationBasis: '按时长分配',
           details: `居住天数: ${tenant.occupancyDays}天 (占比${(timeRatio * 100).toFixed(1)}%)`
@@ -548,7 +556,7 @@ export const useCalculatorStore = defineStore('calculator', {
         id: Date.now(),
         dateRange: `${this.startDate} 至 ${this.endDate}`,
         propertyAddress: this.selectedPropertyAddress,
-        totalBill: this.totalBillAmount,
+        totalBill: result.totalBill,
         bills: [...this.bills],
         heatingCommonConsumption: this.heatingCommonConsumption,
         heatingRooms: JSON.parse(JSON.stringify(this.heatingRooms)),

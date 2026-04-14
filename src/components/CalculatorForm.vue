@@ -33,14 +33,6 @@ const updateTenant = (tenantId, field, value) => {
 }
 
 // 操作方法
-const addBillType = () => {
-  store.addBillType()
-}
-
-const removeBillType = (id) => {
-  store.removeBillType(id)
-}
-
 const addTenant = () => {
   store.addTenant()
 }
@@ -73,6 +65,18 @@ const updateHeatingRoomOccupant = (roomId, occupantId, field, value) => {
   store.updateHeatingRoomOccupantField(roomId, occupantId, field, value)
 }
 
+const addHeatingRoom = () => {
+  store.addHeatingRoom()
+}
+
+const removeHeatingRoom = (roomId) => {
+  store.removeHeatingRoom(roomId)
+}
+
+const updateHeatingRoomName = (roomId, value) => {
+  store.updateHeatingRoomName(roomId, value)
+}
+
 // 初始化表单数据
 onMounted(() => {
   // 设置默认日期
@@ -96,23 +100,10 @@ onMounted(() => {
           <i class="fas fa-file-invoice-dollar"></i>
           费用信息
         </label>
-        <button class="btn btn-sm btn-secondary" @click="addBillType">
-          <i class="fas fa-plus-circle"></i> 添加费用类型
-        </button>
       </div>
       
       <div class="bill-list">
         <div v-for="bill in store.bills" :key="bill.id" class="bill-item">
-          <div class="bill-actions" v-if="store.bills.length > 1">
-            <button 
-              class="btn btn-sm btn-danger" 
-              @click="removeBillType(bill.id)"
-              title="删除费用类型"
-            >
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-          
           <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
             <label class="form-label">
               <i :class="bill.icon"></i>
@@ -200,11 +191,7 @@ onMounted(() => {
       :value="formData.allocationMethod" 
       @change="updateFormData('allocationMethod', $event.target.value)"
     >
-      <option value="area">按房间面积比例分摊</option>
-      <option value="headcount">按人头平均分摊</option>
       <option value="time">按居住天数比例分摊</option>
-      <option value="device">按电器使用情况分摊</option>
-      <option value="custom">自定义比例分摊</option>
       <option value="heating_room">暖气专用：按房间消耗+租期分摊</option>
     </select>
   </div>
@@ -418,13 +405,33 @@ onMounted(() => {
       </div>
     </div>
 
+    <div class="d-flex justify-content-end mb-2">
+      <button class="btn btn-sm btn-secondary" @click="addHeatingRoom">
+        <i class="fas fa-plus-circle"></i> 添加房间
+      </button>
+    </div>
+
     <div v-for="room in store.heatingRooms" :key="`room-${room.id}`" class="card mb-3">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="card-title mb-0">房间 {{ room.name }}</h5>
-          <button class="btn btn-sm btn-secondary" @click="addHeatingRoomOccupant(room.id)">
-            <i class="fas fa-plus-circle"></i> 添加租客时段
-          </button>
+          <div class="d-flex align-items-center gap-2">
+            <label class="form-label mb-0">房间名称</label>
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              style="width: 140px;"
+              :value="room.name"
+              @input="updateHeatingRoomName(room.id, $event.target.value)"
+            >
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-secondary" @click="addHeatingRoomOccupant(room.id)">
+              <i class="fas fa-plus-circle"></i> 添加租客时段
+            </button>
+            <button class="btn btn-sm btn-danger" @click="removeHeatingRoom(room.id)" :disabled="store.heatingRooms.length <= 1">
+              <i class="fas fa-trash"></i> 删除房间
+            </button>
+          </div>
         </div>
 
         <div class="form-group mb-3" style="max-width: 320px;">
