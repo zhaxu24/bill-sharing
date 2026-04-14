@@ -110,6 +110,13 @@ const activeBills = computed(() => {
   return store.bills.filter(bill => activeIds.has(bill.id))
 })
 
+const reportTitle = computed(() => {
+  if (activeBills.value.length === 1) {
+    return `${activeBills.value[0].name}分摊报表`
+  }
+  return '费用分摊报表'
+})
+
 const calculationNotes = computed(() => {
   const basis = props.result?.allocationDetails?.[0]?.allocationBasis || ''
   const roomCount = store.heatingRooms?.length || 0
@@ -164,7 +171,7 @@ const printAsPDF = () => {
     '<!DOCTYPE html>',
     '<html>',
     '<head>',
-    '  <title>Nebenkosten分摊报表</title>',
+    `  <title>${reportTitle.value}</title>`,
     '  <meta charset="UTF-8">',
     '  <style>',
     '    body {',
@@ -255,7 +262,7 @@ const printAsPDF = () => {
     '</head>',
     '<body>',
     '  <div class="report-header">',
-    '    <h1>Nebenkosten分摊报表</h1>',
+    `    <h1>${reportTitle.value}</h1>`,
     '    <div class="report-meta">',
     `      <p><strong>房屋地址：</strong>${store.selectedPropertyAddress}</p>`,
     `      <p><strong>计费周期：</strong>${store.startDate} 至 ${store.endDate}</p>`,
@@ -305,7 +312,6 @@ const printAsPDF = () => {
     '        <tr>',
     '          <th>租户</th>',
     ...activeBills.value.map(bill => `          <th>${bill.name} (欧元)</th>`),
-    '          <th>合计 (欧元)</th>',
     '        </tr>',
     '      </thead>',
     '      <tbody>',
@@ -316,13 +322,11 @@ const printAsPDF = () => {
         const row = item.breakdown.find(part => part.billId === bill.id)
         return `          <td class="amount">€${(row ? row.amount : 0).toFixed(2)}</td>`
       }),
-      `          <td class="amount">€${item.subtotal.toFixed(2)}</td>`,
       '        </tr>'
     ].join('\n')),
     '        <tr class="total-row">',
     '          <td><strong>总计</strong></td>',
     ...activeBills.value.map(bill => `          <td class="amount"><strong>€${parseFloat(bill.amount || 0).toFixed(2)}</strong></td>`),
-    `          <td class="amount"><strong>€${props.result.totalBill.toFixed(2)}</strong></td>`,
     '        </tr>',
     '      </tbody>',
     '    </table>',
@@ -368,7 +372,7 @@ const exportAsImage = () => {
     ctx.fillStyle = document.body.classList.contains('dark-mode') ? '#ffffff' : '#000000'
     ctx.font = 'bold 24px Arial'
     ctx.textAlign = 'center'
-    ctx.fillText('Nebenkosten分摊报表', width/2, 40)
+    ctx.fillText(reportTitle.value, width/2, 40)
     
     // 基本信息
     ctx.font = '16px Arial'
@@ -563,7 +567,6 @@ const exportAsImage = () => {
             <tr>
               <th>租户</th>
               <th v-for="bill in activeBills" :key="`bill-head-${bill.id}`">{{ bill.name }}</th>
-              <th>合计</th>
             </tr>
           </thead>
           <tbody>
@@ -572,14 +575,12 @@ const exportAsImage = () => {
               <td v-for="bill in activeBills" :key="`bill-cell-${item.tenantId}-${bill.id}`" class="fw-bold text-success">
                 €{{ ((item.breakdown.find(part => part.billId === bill.id)?.amount) || 0).toFixed(2) }}
               </td>
-              <td><strong class="text-primary">€{{ item.subtotal.toFixed(2) }}</strong></td>
             </tr>
             <tr class="total-row">
               <td><strong>总计</strong></td>
               <td v-for="bill in activeBills" :key="`bill-total-${bill.id}`">
                 <strong class="text-primary">€{{ parseFloat(bill.amount || 0).toFixed(2) }}</strong>
               </td>
-              <td><strong class="text-primary">€{{ result.totalBill.toFixed(2) }}</strong></td>
             </tr>
           </tbody>
         </table>
