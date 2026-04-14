@@ -190,7 +190,7 @@ onMounted(() => {
                       <div class="text-muted small">分摊方式: {{ item.allocationMethod }}</div>
                     </div>
                     <div class="history-total">
-                      ¥{{ item.totalBill.toFixed(2) }}
+                      €{{ item.totalBill.toFixed(2) }}
                     </div>
                   </div>
                 </div>

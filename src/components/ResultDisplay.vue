@@ -64,7 +64,7 @@ const chartOptions = computed(() => {
           label: function(context) {
             const tenant = props.result.allocationDetails[context.dataIndex]
             return [
-              `金额: ¥${context.raw.toFixed(2)}`,
+              `金额: €${context.raw.toFixed(2)}`,
               `占比: ${(tenant.ratio * 100).toFixed(1)}%`,
               `分摊依据: ${tenant.allocationBasis}`,
               `说明: ${tenant.details}`
@@ -216,7 +216,7 @@ const printAsPDF = () => {
     `      <p><strong>房屋地址：</strong>${store.selectedPropertyAddress}</p>`,
     `      <p><strong>计费周期：</strong>${store.startDate} 至 ${store.endDate}</p>`,
     `      <p><strong>分摊方式：</strong>${getAllocationMethodText(props.result.allocationDetails[0].allocationBasis)}</p>`,
-    `      <p><strong>总费用：</strong>¥${props.result.totalBill.toFixed(2)}</p>`,
+    `      <p><strong>总费用：</strong>€${props.result.totalBill.toFixed(2)}</p>`,
     '    </div>',
     '  </div>',
     '  ',
@@ -236,7 +236,7 @@ const printAsPDF = () => {
     ...props.result.allocationDetails.map(item => [
       '        <tr>',
       `          <td>${item.tenantName}</td>`,
-      `          <td class="amount">¥${item.amount.toFixed(2)}</td>`,
+      `          <td class="amount">€${item.amount.toFixed(2)}</td>`,
       `          <td>${(item.ratio * 100).toFixed(1)}%</td>`,
       `          <td>${item.allocationBasis}</td>`,
       `          <td>${item.details}</td>`,
@@ -244,7 +244,7 @@ const printAsPDF = () => {
     ].join('\n')),
     '        <tr class="total-row">',
     '          <td><strong>总计</strong></td>',
-    `          <td class="amount"><strong>¥${props.result.totalBill.toFixed(2)}</strong></td>`,
+    `          <td class="amount"><strong>€${props.result.totalBill.toFixed(2)}</strong></td>`,
     '          <td><strong>100%</strong></td>',
     '          <td></td>',
     '          <td></td>',
@@ -256,8 +256,8 @@ const printAsPDF = () => {
     '      <thead>',
     '        <tr>',
     '          <th>租户</th>',
-    ...activeBills.value.map(bill => `          <th>${bill.name} (元)</th>`),
-    '          <th>合计 (元)</th>',
+    ...activeBills.value.map(bill => `          <th>${bill.name} (欧元)</th>`),
+    '          <th>合计 (欧元)</th>',
     '        </tr>',
     '      </thead>',
     '      <tbody>',
@@ -266,15 +266,15 @@ const printAsPDF = () => {
       `          <td>${item.tenantName}</td>`,
       ...activeBills.value.map(bill => {
         const row = item.breakdown.find(part => part.billId === bill.id)
-        return `          <td class="amount">¥${(row ? row.amount : 0).toFixed(2)}</td>`
+        return `          <td class="amount">€${(row ? row.amount : 0).toFixed(2)}</td>`
       }),
-      `          <td class="amount">¥${item.subtotal.toFixed(2)}</td>`,
+      `          <td class="amount">€${item.subtotal.toFixed(2)}</td>`,
       '        </tr>'
     ].join('\n')),
     '        <tr class="total-row">',
     '          <td><strong>总计</strong></td>',
-    ...activeBills.value.map(bill => `          <td class="amount"><strong>¥${parseFloat(bill.amount || 0).toFixed(2)}</strong></td>`),
-    `          <td class="amount"><strong>¥${props.result.totalBill.toFixed(2)}</strong></td>`,
+    ...activeBills.value.map(bill => `          <td class="amount"><strong>€${parseFloat(bill.amount || 0).toFixed(2)}</strong></td>`),
+    `          <td class="amount"><strong>€${props.result.totalBill.toFixed(2)}</strong></td>`,
     '        </tr>',
     '      </tbody>',
     '    </table>',
@@ -302,7 +302,7 @@ const printAsPDF = () => {
 // 导出为图片（结构化报表形式）
 const exportAsImage = () => {
   try {
-    // 创建一个隐藏的canvas欧元素用于绘制报表
+    // 创建一个隐藏的canvas元素用于绘制报表
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
     
@@ -333,7 +333,7 @@ const exportAsImage = () => {
     
     const methodText = getAllocationMethodText(props.result.allocationDetails[0].allocationBasis)
     ctx.fillText(`分摊方式: ${methodText}`, 50, 140)
-    ctx.fillText(`总费用: ¥${props.result.totalBill.toFixed(2)}`, 50, 170)
+    ctx.fillText(`总费用: €${props.result.totalBill.toFixed(2)}`, 50, 170)
     
     // 绘制表格
     const rowHeight = 30
@@ -429,7 +429,7 @@ const exportAsImage = () => {
       <div class="summary-cards">
         <div class="summary-card">
           <div class="summary-label">费用总额</div>
-          <div class="summary-value">¥{{ result.totalBill.toFixed(2) }}</div>
+          <div class="summary-value">€{{ result.totalBill.toFixed(2) }}</div>
           <div class="summary-label">总费用</div>
         </div>
         
@@ -480,7 +480,7 @@ const exportAsImage = () => {
                   {{ item.tenantName }}
                 </div>
               </td>
-              <td class="fw-bold text-success">¥{{ item.amount.toFixed(2) }}</td>
+              <td class="fw-bold text-success">€{{ item.amount.toFixed(2) }}</td>
               <td>
                 <div class="d-flex align-items-center">
                   <div class="progress flex-grow-1 me-2" style="height: 8px;">
@@ -496,7 +496,7 @@ const exportAsImage = () => {
             </tr>
             <tr class="total-row">
               <td><strong>总计</strong></td>
-              <td><strong class="text-primary">¥{{ result.totalBill.toFixed(2) }}</strong></td>
+              <td><strong class="text-primary">€{{ result.totalBill.toFixed(2) }}</strong></td>
               <td><strong>100%</strong></td>
               <td></td>
             </tr>
@@ -522,16 +522,16 @@ const exportAsImage = () => {
             <tr v-for="item in result.billBreakdown || []" :key="`breakdown-${item.tenantId}`">
               <td>{{ item.tenantName }}</td>
               <td v-for="bill in activeBills" :key="`bill-cell-${item.tenantId}-${bill.id}`" class="fw-bold text-success">
-                ¥{{ ((item.breakdown.find(part => part.billId === bill.id)?.amount) || 0).toFixed(2) }}
+                €{{ ((item.breakdown.find(part => part.billId === bill.id)?.amount) || 0).toFixed(2) }}
               </td>
-              <td><strong class="text-primary">¥{{ item.subtotal.toFixed(2) }}</strong></td>
+              <td><strong class="text-primary">€{{ item.subtotal.toFixed(2) }}</strong></td>
             </tr>
             <tr class="total-row">
               <td><strong>总计</strong></td>
               <td v-for="bill in activeBills" :key="`bill-total-${bill.id}`">
-                <strong class="text-primary">¥{{ parseFloat(bill.amount || 0).toFixed(2) }}</strong>
+                <strong class="text-primary">€{{ parseFloat(bill.amount || 0).toFixed(2) }}</strong>
               </td>
-              <td><strong class="text-primary">¥{{ result.totalBill.toFixed(2) }}</strong></td>
+              <td><strong class="text-primary">€{{ result.totalBill.toFixed(2) }}</strong></td>
             </tr>
           </tbody>
         </table>

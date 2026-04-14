@@ -118,7 +118,7 @@ onMounted(() => {
       <div class="mt-2">
         <div class="alert alert-info mb-0">
           <i class="fas fa-info-circle me-2"></i>
-          <small>总费用: <strong>¥{{ store.totalBillAmount.toFixed(2) }}</strong></small>
+          <small>总费用: <strong>€{{ store.totalBillAmount.toFixed(2) }}</strong></small>
         </div>
       </div>
     </div>

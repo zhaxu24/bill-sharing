@@ -5,7 +5,7 @@
       <div class="report-meta">
         <p><strong>计费周期：</strong>{{ store.startDate }} 至 {{ store.endDate }}</p>
         <p><strong>分摊方式：</strong>{{ allocationMethodText }}</p>
-        <p><strong>总费用：</strong>¥{{ store.calculationResult.totalBill.toFixed(2) }}</p>
+        <p><strong>总费用：</strong>€{{ store.calculationResult.totalBill.toFixed(2) }}</p>
       </div>
     </div>
 
@@ -24,14 +24,14 @@
         <tbody>
           <tr v-for="(item, index) in store.calculationResult.allocationDetails" :key="index">
             <td>{{ item.tenantName }}</td>
-            <td class="amount">¥{{ item.amount.toFixed(2) }}</td>
+            <td class="amount">€{{ item.amount.toFixed(2) }}</td>
             <td>{{ (item.ratio * 100).toFixed(1) }}%</td>
             <td>{{ item.allocationBasis }}</td>
             <td>{{ item.details }}</td>
           </tr>
           <tr class="total-row">
             <td><strong>总计</strong></td>
-            <td class="amount"><strong>¥{{ store.calculationResult.totalBill.toFixed(2) }}</strong></td>
+            <td class="amount"><strong>€{{ store.calculationResult.totalBill.toFixed(2) }}</strong></td>
             <td><strong>100%</strong></td>
             <td></td>
             <td></td>
