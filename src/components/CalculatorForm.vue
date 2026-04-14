@@ -28,10 +28,7 @@ const updateBillAmount = (id, value) => {
 
 // 更新租户信息
 const updateTenant = (tenantId, field, value) => {
-  const tenant = store.tenants.find(t => t.id === tenantId)
-  if (tenant) {
-    tenant[field] = value
-  }
+  store.updateTenantField(tenantId, field, value)
 }
 
 // 操作方法
@@ -224,16 +221,33 @@ onMounted(() => {
           >
         </div>
         
-        <div class="form-group mb-0" style="flex: 1; min-width: 120px;">
-          <label class="form-label">居住天数</label>
+        <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+          <label class="form-label">居住开始日期</label>
           <input 
-            type="number" 
+            type="date" 
             class="form-control form-control-sm" 
-            :value="tenant.occupancyDays" 
-            @input="updateTenant(tenant.id, 'occupancyDays', $event.target.value)"
-            min="1" 
-            max="31"
-            placeholder="天数"
+            :value="tenant.occupancyStartDate" 
+            @input="updateTenant(tenant.id, 'occupancyStartDate', $event.target.value)"
+          >
+        </div>
+
+        <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+          <label class="form-label">居住结束日期</label>
+          <input 
+            type="date" 
+            class="form-control form-control-sm" 
+            :value="tenant.occupancyEndDate" 
+            @input="updateTenant(tenant.id, 'occupancyEndDate', $event.target.value)"
+          >
+        </div>
+
+        <div class="form-group mb-0" style="flex: 1; min-width: 120px;">
+          <label class="form-label">自动计算天数</label>
+          <input
+            type="number"
+            class="form-control form-control-sm"
+            :value="tenant.occupancyDays"
+            readonly
           >
         </div>
       </div>

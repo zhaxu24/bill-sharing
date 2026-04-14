@@ -16,8 +16,8 @@ export const useCalculatorStore = defineStore('calculator', {
     
     // 租户信息
     tenants: [
-      { id: 1, name: '租户1', roomArea: 15, occupancyDays: 30, devices: [] },
-      { id: 2, name: '租户2', roomArea: 12, occupancyDays: 30, devices: [] }
+      { id: 1, name: '租户1', roomArea: 15, occupancyStartDate: '', occupancyEndDate: '', occupancyDays: 30, devices: [] },
+      { id: 2, name: '租户2', roomArea: 12, occupancyStartDate: '', occupancyEndDate: '', occupancyDays: 30, devices: [] }
     ],
     
     // 分摊设置
@@ -49,7 +49,7 @@ export const useCalculatorStore = defineStore('calculator', {
     addBillType() {
       const billTypes = [
         { id: 'water', name: '水费', icon: 'fas fa-tint' },
-        { id: 'gas', name: '燃气费', icon: 'fas fa-fire' },
+        { id: 'heating', name: '暖气费', icon: 'fas fa-fire' },
         { id: 'property', name: '物业费', icon: 'fas fa-home' },
         { id: 'internet', name: '网络费', icon: 'fas fa-wifi' },
         { id: 'other', name: '其他费用', icon: 'fas fa-question-circle' }
@@ -87,16 +87,44 @@ export const useCalculatorStore = defineStore('calculator', {
     // 添加租户
     addTenant() {
       const newId = this.tenants.length > 0 ? Math.max(...this.tenants.map(t => t.id)) + 1 : 1
+      const defaultStartDate = this.startDate || ''
+      const defaultEndDate = this.endDate || ''
       this.tenants.push({
         id: newId,
         name: `租户${this.tenants.length + 1}`,
         roomArea: 10,
-        occupancyDays: 30,
+        occupancyStartDate: defaultStartDate,
+        occupancyEndDate: defaultEndDate,
+        occupancyDays: this.calculateDaysBetween(defaultStartDate, defaultEndDate),
         devices: []
       })
       
       // 扩展自定义比例数组
       this.customRatios.push(0)
+    },
+
+    // 更新租户字段
+    updateTenantField(tenantId, field, value) {
+      const tenant = this.tenants.find(t => t.id === tenantId)
+      if (!tenant) return
+
+      tenant[field] = value
+
+      if (field === 'occupancyStartDate' || field === 'occupancyEndDate') {
+        tenant.occupancyDays = this.calculateDaysBetween(tenant.occupancyStartDate, tenant.occupancyEndDate)
+      }
+    },
+
+    // 计算日期区间天数（包含起止日期）
+    calculateDaysBetween(startDate, endDate) {
+      if (!startDate || !endDate) return 0
+
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return 0
+
+      const oneDay = 1000 * 60 * 60 * 24
+      return Math.floor((end - start) / oneDay) + 1
     },
     
     // 删除租户
@@ -137,6 +165,16 @@ export const useCalculatorStore = defineStore('calculator', {
       
       this.startDate = firstDay.toISOString().split('T')[0];
       this.endDate = lastDay.toISOString().split('T')[0];
+
+      this.tenants.forEach(tenant => {
+        if (!tenant.occupancyStartDate) {
+          tenant.occupancyStartDate = this.startDate
+        }
+        if (!tenant.occupancyEndDate) {
+          tenant.occupancyEndDate = this.endDate
+        }
+        tenant.occupancyDays = this.calculateDaysBetween(tenant.occupancyStartDate, tenant.occupancyEndDate)
+      })
     },
     
     // 验证输入数据
@@ -151,6 +189,8 @@ export const useCalculatorStore = defineStore('calculator', {
       for (const tenant of this.tenants) {
         if (!tenant.name) return false
         if (!tenant.roomArea || parseFloat(tenant.roomArea) <= 0) return false
+        if (!tenant.occupancyStartDate || !tenant.occupancyEndDate) return false
+        if (new Date(tenant.occupancyStartDate) > new Date(tenant.occupancyEndDate)) return false
         if (!tenant.occupancyDays || parseInt(tenant.occupancyDays) <= 0) return false
       }
       

@@ -31,7 +31,7 @@
 - 将原有的单一电费分摊扩展为支持多种费用类型，包括：
   - 电费
   - 水费
-  - 燃气费
+  - 暖气费
   - 物业费
   - 网络费
   - 其他费用
@@ -53,7 +53,7 @@
 
 #### 总结
 这些优化使得房租电费分摊计算器更加完善和实用：
-- 多功能支持：不仅限于电费分摊，还支持水费、燃气费等多种费用类型
+- 多功能支持：不仅限于电费分摊，还支持水费、暖气费等多种费用类型
 - 更好的用户体验：通过动画效果和改进的交互设计提升用户满意度
 - 更强的数据验证：帮助用户避免输入错误，提供明确的错误提示
 - 历史记录：方便用户查看之前的计算结果
@@ -99,7 +99,7 @@
 git clone https://github.com/xiaobo110/Electricity-bill-sharing.git
 
 # 2. 进入项目目录
-cd rent-electricity-calculator
+cd /Users/xuzhang/Documents/git/bill-sharing
 
 # 3. 安装依赖
 npm install
@@ -112,7 +112,69 @@ npm run dev
 yarn dev
 ```
 
-打开浏览器访问 [https://electricity-bill-sharing.3ec8b629.er.aliyun-esa.net](https://electricity-bill-sharing.3ec8b629.er.aliyun-esa.net) 即可使用！
+执行 `npm run dev` 后，终端会显示本地访问地址（通常是 `http://127.0.0.1:3000/` 或 `http://localhost:5173/`），在浏览器中打开即可使用。
+
+线上演示地址（无需本地启动）：[https://electricity-bill-sharing.3ec8b629.er.aliyun-esa.net](https://electricity-bill-sharing.3ec8b629.er.aliyun-esa.net)
+
+### 🧭 新手启动指南（当前电脑路径）
+
+如果你的项目就在这个目录：
+
+`/Users/xuzhang/Documents/git/bill-sharing`
+
+请直接执行：
+
+```bash
+cd /Users/xuzhang/Documents/git/bill-sharing
+npm install
+npm run dev -- --host 127.0.0.1
+```
+
+启动成功后，浏览器打开：
+
+`http://127.0.0.1:3000/`
+
+### ❓本地地址可以保存后直接点击吗？
+
+- 可以收藏本地地址（例如 `http://127.0.0.1:3000/`）。
+- 但本地地址只有在你先执行 `npm run dev` 时才会生效。
+- 如果没启动开发服务，点击收藏链接也会打不开。
+- 若希望“点开就能用”，请使用线上演示地址，或自行部署一个公网地址。
+
+---
+
+## 🧩 本次改造方案（2026-04）
+
+### 目标
+
+1. 将费用类型中的“燃气费”替换为“暖气费”。
+2. 将租户“居住天数”改为“居住开始日期 + 居住结束日期”，并自动计算居住天数参与分摊。
+
+### 实施步骤
+
+1. **Store层改造**（`src/stores/calculatorStore.js`）
+   - 费用类型中将 `gas` 调整为 `heating`，显示名称改为“暖气费”。
+   - 租户数据结构新增 `occupancyStartDate`、`occupancyEndDate` 字段。
+   - 增加日期差计算逻辑，自动回写 `occupancyDays`。
+   - 输入校验增加租户起止日期有效性检查（结束日期不能早于开始日期）。
+
+2. **表单层改造**（`src/components/CalculatorForm.vue`）
+   - 租户卡片中将“居住天数输入框”替换为“开始日期/结束日期”选择器。
+   - 新增“自动计算天数”的展示字段（只读）。
+   - 日期变化时自动同步到 Store 并刷新对应租户天数。
+
+3. **验证与运行**
+   - 执行 `npm install`（若依赖已安装可跳过）。
+   - 执行 `npm run dev -- --host 127.0.0.1` 本地启动。
+   - 手动验证：录入不同租期租户，切换“按居住天数比例分摊”，检查金额比例是否随天数变化。
+
+### 预期结果
+
+- 费用类型更贴合实际场景（暖气费）。
+- 新手无需手算天数，降低输入错误概率。
+- 保留现有分摊逻辑，改动范围小、兼容性高。
+
+---
 
 ### 📦 构建生产版本
 
