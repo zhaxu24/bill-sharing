@@ -19,6 +19,33 @@ export const useCalculatorStore = defineStore('calculator', {
       'Froebelstrasse 11, 91058, Erlangen'
     ],
     selectedPropertyAddress: 'Geschwister-Scholl Strasse 6, 91058, Erlangen',
+    heatingCommonConsumption: 0,
+    heatingRooms: [
+      {
+        id: 'A',
+        name: 'A',
+        consumption: 0,
+        occupants: [{ id: 1, tenantName: 'a1', startDate: '', endDate: '', occupancyDays: 0 }]
+      },
+      {
+        id: 'B',
+        name: 'B',
+        consumption: 0,
+        occupants: [{ id: 1, tenantName: 'b1', startDate: '', endDate: '', occupancyDays: 0 }]
+      },
+      {
+        id: 'C',
+        name: 'C',
+        consumption: 0,
+        occupants: [{ id: 1, tenantName: 'c1', startDate: '', endDate: '', occupancyDays: 0 }]
+      },
+      {
+        id: 'D',
+        name: 'D',
+        consumption: 0,
+        occupants: [{ id: 1, tenantName: 'd1', startDate: '', endDate: '', occupancyDays: 0 }]
+      }
+    ],
     
     // 租户信息
     tenants: [
@@ -27,7 +54,7 @@ export const useCalculatorStore = defineStore('calculator', {
     ],
     
     // 分摊设置
-    allocationMethod: 'area', // 'area', 'headcount', 'time', 'device', 'custom'
+    allocationMethod: 'area', // 'area', 'headcount', 'time', 'device', 'custom', 'heating_room'
     customRatios: [0.5, 0.5],
     calculationHistory: [],
     
@@ -121,6 +148,49 @@ export const useCalculatorStore = defineStore('calculator', {
       }
     },
 
+    updateHeatingRoomConsumption(roomId, value) {
+      const room = this.heatingRooms.find(r => r.id === roomId)
+      if (!room) return
+      room.consumption = value
+    },
+
+    addHeatingRoomOccupant(roomId) {
+      const room = this.heatingRooms.find(r => r.id === roomId)
+      if (!room) return
+
+      const nextId = room.occupants.length > 0
+        ? Math.max(...room.occupants.map(o => o.id)) + 1
+        : 1
+
+      const startDate = this.startDate || ''
+      const endDate = this.endDate || ''
+      room.occupants.push({
+        id: nextId,
+        tenantName: `${room.name.toLowerCase()}${room.occupants.length + 1}`,
+        startDate,
+        endDate,
+        occupancyDays: this.calculateDaysBetween(startDate, endDate)
+      })
+    },
+
+    removeHeatingRoomOccupant(roomId, occupantId) {
+      const room = this.heatingRooms.find(r => r.id === roomId)
+      if (!room || room.occupants.length <= 1) return
+      room.occupants = room.occupants.filter(o => o.id !== occupantId)
+    },
+
+    updateHeatingRoomOccupantField(roomId, occupantId, field, value) {
+      const room = this.heatingRooms.find(r => r.id === roomId)
+      if (!room) return
+      const occupant = room.occupants.find(o => o.id === occupantId)
+      if (!occupant) return
+
+      occupant[field] = value
+      if (field === 'startDate' || field === 'endDate') {
+        occupant.occupancyDays = this.calculateDaysBetween(occupant.startDate, occupant.endDate)
+      }
+    },
+
     // 计算日期区间天数（包含起止日期）
     calculateDaysBetween(startDate, endDate) {
       if (!startDate || !endDate) return 0
@@ -181,6 +251,14 @@ export const useCalculatorStore = defineStore('calculator', {
         }
         tenant.occupancyDays = this.calculateDaysBetween(tenant.occupancyStartDate, tenant.occupancyEndDate)
       })
+
+      this.heatingRooms.forEach(room => {
+        room.occupants.forEach(occupant => {
+          if (!occupant.startDate) occupant.startDate = this.startDate
+          if (!occupant.endDate) occupant.endDate = this.endDate
+          occupant.occupancyDays = this.calculateDaysBetween(occupant.startDate, occupant.endDate)
+        })
+      })
     },
     
     // 验证输入数据
@@ -191,6 +269,22 @@ export const useCalculatorStore = defineStore('calculator', {
       if (new Date(this.startDate) >= new Date(this.endDate)) return false
       if (!this.selectedPropertyAddress) return false
       
+      if (this.allocationMethod === 'heating_room') {
+        if (parseFloat(this.heatingCommonConsumption || 0) < 0) return false
+        if (!Array.isArray(this.heatingRooms) || this.heatingRooms.length === 0) return false
+        for (const room of this.heatingRooms) {
+          if (parseFloat(room.consumption || 0) < 0) return false
+          if (!Array.isArray(room.occupants) || room.occupants.length === 0) return false
+          for (const occupant of room.occupants) {
+            if (!occupant.tenantName) return false
+            if (!occupant.startDate || !occupant.endDate) return false
+            if (new Date(occupant.startDate) > new Date(occupant.endDate)) return false
+            if (!occupant.occupancyDays || parseInt(occupant.occupancyDays) <= 0) return false
+          }
+        }
+        return true
+      }
+
       // 验证租户数据
       if (this.tenants.length === 0) return false
       for (const tenant of this.tenants) {
@@ -234,6 +328,9 @@ export const useCalculatorStore = defineStore('calculator', {
         case 'custom':
           result.allocationDetails = this.calculateByCustomRatio()
           break
+        case 'heating_room':
+          result.allocationDetails = this.calculateByHeatingRoom()
+          break
         default:
           result.allocationDetails = this.calculateByArea()
       }
@@ -249,6 +346,53 @@ export const useCalculatorStore = defineStore('calculator', {
       this.saveToHistory(result)
       
       return { success: true }
+    },
+
+    calculateByHeatingRoom() {
+      const roomCount = this.heatingRooms.length || 1
+      const commonPerRoom = parseFloat(this.heatingCommonConsumption || 0) / roomCount
+      const totalShares = this.heatingRooms.reduce((sum, room) => {
+        return sum + parseFloat(room.consumption || 0)
+      }, 0) + parseFloat(this.heatingCommonConsumption || 0)
+
+      if (totalShares <= 0) return this.calculateByHeadcount()
+
+      const unitPrice = this.totalBillAmount / totalShares
+      const tenantMap = new Map()
+
+      this.heatingRooms.forEach(room => {
+        const roomShares = parseFloat(room.consumption || 0) + commonPerRoom
+        const roomCost = roomShares * unitPrice
+        const roomDays = room.occupants.reduce((sum, o) => sum + parseInt(o.occupancyDays || 0), 0)
+        const safeRoomDays = roomDays > 0 ? roomDays : 1
+
+        room.occupants.forEach(occupant => {
+          const ratioInRoom = parseInt(occupant.occupancyDays || 0) / safeRoomDays
+          const amount = roomCost * ratioInRoom
+          const key = occupant.tenantName.trim()
+
+          if (!tenantMap.has(key)) {
+            tenantMap.set(key, {
+              tenantName: key,
+              amount: 0,
+              roomDetails: []
+            })
+          }
+
+          const item = tenantMap.get(key)
+          item.amount += amount
+          item.roomDetails.push(`${room.name}房 ${occupant.startDate}~${occupant.endDate} (${occupant.occupancyDays}天)`)
+        })
+      })
+
+      return Array.from(tenantMap.values()).map((item, idx) => ({
+        tenantId: idx + 1,
+        tenantName: item.tenantName,
+        amount: item.amount,
+        ratio: this.totalBillAmount > 0 ? item.amount / this.totalBillAmount : 0,
+        allocationBasis: '按房间暖气+租期分配',
+        details: item.roomDetails.join('；')
+      }))
     },
 
     // 按费用类型拆分每个租户应缴金额
@@ -406,6 +550,8 @@ export const useCalculatorStore = defineStore('calculator', {
         propertyAddress: this.selectedPropertyAddress,
         totalBill: this.totalBillAmount,
         bills: [...this.bills],
+        heatingCommonConsumption: this.heatingCommonConsumption,
+        heatingRooms: JSON.parse(JSON.stringify(this.heatingRooms)),
         allocationMethod: this.allocationMethod,
         details: result.allocationDetails,
         billBreakdown: result.billBreakdown,

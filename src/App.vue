@@ -11,6 +11,8 @@ const showToast = ref(false)
 const toastMessage = ref('')
 const toastType = ref('success')
 const activeTab = ref('calculator')
+const importFileInput = ref(null)
+const DATA_SCHEMA_VERSION = '1.0.0'
 
 // 切换暗黑模式
 const toggleDarkMode = () => {
@@ -44,6 +46,96 @@ const calculate = () => {
   }
 }
 
+const buildSnapshot = () => {
+  return {
+    schemaVersion: DATA_SCHEMA_VERSION,
+    exportedAt: new Date().toISOString(),
+    appName: 'bill-sharing',
+    data: {
+      bills: store.bills,
+      startDate: store.startDate,
+      endDate: store.endDate,
+      selectedPropertyAddress: store.selectedPropertyAddress,
+      heatingCommonConsumption: store.heatingCommonConsumption,
+      heatingRooms: store.heatingRooms,
+      tenants: store.tenants,
+      allocationMethod: store.allocationMethod,
+      customRatios: store.customRatios,
+      calculationHistory: store.calculationHistory,
+      calculationResult: store.calculationResult
+    }
+  }
+}
+
+const applySnapshot = (payload) => {
+  store.bills = payload.bills || []
+  store.startDate = payload.startDate || ''
+  store.endDate = payload.endDate || ''
+  store.selectedPropertyAddress = payload.selectedPropertyAddress || store.propertyAddressOptions[0]
+  store.heatingCommonConsumption = payload.heatingCommonConsumption || 0
+  store.heatingRooms = payload.heatingRooms || store.heatingRooms
+  store.tenants = payload.tenants || []
+  store.allocationMethod = payload.allocationMethod || 'area'
+  store.customRatios = payload.customRatios || []
+  store.calculationHistory = payload.calculationHistory || []
+  store.calculationResult = payload.calculationResult || null
+
+  localStorage.setItem('electricityCalculationHistory', JSON.stringify(store.calculationHistory))
+  showResult.value = !!store.calculationResult
+}
+
+const exportDataSnapshot = () => {
+  try {
+    const snapshot = buildSnapshot()
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const date = new Date().toISOString().slice(0, 10)
+    link.href = url
+    link.download = `bill-sharing-snapshot-${date}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    showMessage('Data exported successfully.', 'success')
+  } catch (error) {
+    console.error('Export failed:', error)
+    showMessage('Failed to export data.', 'error')
+  }
+}
+
+const openImportDialog = () => {
+  importFileInput.value?.click()
+}
+
+const importDataSnapshot = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  try {
+    const raw = await file.text()
+    const parsed = JSON.parse(raw)
+
+    if (!parsed.schemaVersion || !parsed.data) {
+      throw new Error('Invalid data file format.')
+    }
+
+    if (parsed.schemaVersion !== DATA_SCHEMA_VERSION) {
+      throw new Error(`Unsupported schema version: ${parsed.schemaVersion}`)
+    }
+
+    const confirmed = window.confirm('Import will overwrite current form data. Continue?')
+    if (!confirmed) return
+
+    applySnapshot(parsed.data)
+    showMessage('Data imported successfully.', 'success')
+    activeTab.value = 'calculator'
+  } catch (error) {
+    console.error('Import failed:', error)
+    showMessage('Failed to import data. Please check file format.', 'error')
+  } finally {
+    event.target.value = ''
+  }
+}
+
 // 切换标签页
 const switchTab = (tab) => {
   activeTab.value = tab
@@ -67,6 +159,10 @@ const loadHistoryItem = (item) => {
   store.startDate = item.dateRange.split(' 至 ')[0]
   store.endDate = item.dateRange.split(' 至 ')[1]
   store.selectedPropertyAddress = item.propertyAddress || store.propertyAddressOptions[0]
+  store.heatingCommonConsumption = item.heatingCommonConsumption || 0
+  if (item.heatingRooms) {
+    store.heatingRooms = item.heatingRooms
+  }
   store.allocationMethod = item.allocationMethod
   
   // 显示结果
@@ -148,6 +244,21 @@ onMounted(() => {
                   <i class="fas fa-calculator"></i>
                   计算费用分摊
                 </button>
+                <button class="btn btn-secondary" @click="exportDataSnapshot">
+                  <i class="fas fa-download"></i>
+                  导出数据(JSON)
+                </button>
+                <button class="btn btn-secondary" @click="openImportDialog">
+                  <i class="fas fa-upload"></i>
+                  导入数据(JSON)
+                </button>
+                <input
+                  ref="importFileInput"
+                  type="file"
+                  accept=".json,application/json"
+                  style="display: none"
+                  @change="importDataSnapshot"
+                >
               </div>
             </div>
           </div>

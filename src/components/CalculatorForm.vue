@@ -57,6 +57,22 @@ const removeDevice = (tenantId, deviceId) => {
   store.removeDevice(tenantId, deviceId)
 }
 
+const updateHeatingRoomConsumption = (roomId, value) => {
+  store.updateHeatingRoomConsumption(roomId, value)
+}
+
+const addHeatingRoomOccupant = (roomId) => {
+  store.addHeatingRoomOccupant(roomId)
+}
+
+const removeHeatingRoomOccupant = (roomId, occupantId) => {
+  store.removeHeatingRoomOccupant(roomId, occupantId)
+}
+
+const updateHeatingRoomOccupant = (roomId, occupantId, field, value) => {
+  store.updateHeatingRoomOccupantField(roomId, occupantId, field, value)
+}
+
 // 初始化表单数据
 onMounted(() => {
   // 设置默认日期
@@ -189,11 +205,12 @@ onMounted(() => {
       <option value="time">按居住天数比例分摊</option>
       <option value="device">按电器使用情况分摊</option>
       <option value="custom">自定义比例分摊</option>
+      <option value="heating_room">暖气专用：按房间消耗+租期分摊</option>
     </select>
   </div>
   
   <!-- 租户信息 -->
-  <div class="form-group">
+  <div v-if="formData.allocationMethod !== 'heating_room'" class="form-group">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <label class="mb-0">
         <i class="fas fa-users"></i>
@@ -372,6 +389,109 @@ onMounted(() => {
         <div class="alert alert-info mb-0">
           <i class="fas fa-info-circle me-2"></i>
           <small>系统会自动将比例调整为总和100%</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 暖气专用分摊输入 -->
+  <div v-if="formData.allocationMethod === 'heating_room'" class="form-group">
+    <label class="form-label">
+      <i class="fas fa-fire"></i>
+      暖气专用输入（按房间）
+    </label>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="form-group mb-0" style="max-width: 320px;">
+          <label class="form-label">公共区域暖气消耗（份）</label>
+          <input
+            type="number"
+            class="form-control form-control-sm"
+            :value="store.heatingCommonConsumption"
+            @input="store.heatingCommonConsumption = $event.target.value"
+            min="0"
+            step="0.01"
+            placeholder="例如 40"
+          >
+        </div>
+      </div>
+    </div>
+
+    <div v-for="room in store.heatingRooms" :key="`room-${room.id}`" class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="card-title mb-0">房间 {{ room.name }}</h5>
+          <button class="btn btn-sm btn-secondary" @click="addHeatingRoomOccupant(room.id)">
+            <i class="fas fa-plus-circle"></i> 添加租客时段
+          </button>
+        </div>
+
+        <div class="form-group mb-3" style="max-width: 320px;">
+          <label class="form-label">房间暖气消耗（份）</label>
+          <input
+            type="number"
+            class="form-control form-control-sm"
+            :value="room.consumption"
+            @input="updateHeatingRoomConsumption(room.id, $event.target.value)"
+            min="0"
+            step="0.01"
+            placeholder="例如 120"
+          >
+        </div>
+
+        <div v-for="occupant in room.occupants" :key="`occ-${room.id}-${occupant.id}`" class="occupant-card mb-2">
+          <div class="occupant-actions">
+            <button
+              class="btn btn-sm btn-danger"
+              @click="removeHeatingRoomOccupant(room.id, occupant.id)"
+              :disabled="room.occupants.length <= 1"
+              title="删除租客时段"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+
+          <div class="form-group mb-0" style="flex: 1; min-width: 140px;">
+            <label class="form-label">租客名称</label>
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              :value="occupant.tenantName"
+              @input="updateHeatingRoomOccupant(room.id, occupant.id, 'tenantName', $event.target.value)"
+              placeholder="例如 a1"
+            >
+          </div>
+
+          <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+            <label class="form-label">开始日期</label>
+            <input
+              type="date"
+              class="form-control form-control-sm"
+              :value="occupant.startDate"
+              @input="updateHeatingRoomOccupant(room.id, occupant.id, 'startDate', $event.target.value)"
+            >
+          </div>
+
+          <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+            <label class="form-label">结束日期</label>
+            <input
+              type="date"
+              class="form-control form-control-sm"
+              :value="occupant.endDate"
+              @input="updateHeatingRoomOccupant(room.id, occupant.id, 'endDate', $event.target.value)"
+            >
+          </div>
+
+          <div class="form-group mb-0" style="flex: 1; min-width: 120px;">
+            <label class="form-label">天数</label>
+            <input
+              type="number"
+              class="form-control form-control-sm"
+              :value="occupant.occupancyDays"
+              readonly
+            >
+          </div>
         </div>
       </div>
     </div>
