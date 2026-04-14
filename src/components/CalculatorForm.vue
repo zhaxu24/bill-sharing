@@ -8,6 +8,7 @@ const store = useCalculatorStore()
 const formData = ref({
   startDate: '',
   endDate: '',
+  selectedPropertyAddress: '',
   allocationMethod: 'area'
 })
 
@@ -65,6 +66,7 @@ onMounted(() => {
   
   formData.value.startDate = store.startDate
   formData.value.endDate = store.endDate
+  formData.value.selectedPropertyAddress = store.selectedPropertyAddress
   formData.value.allocationMethod = store.allocationMethod
 })
 </script>
@@ -149,6 +151,24 @@ onMounted(() => {
         :value="formData.endDate" 
         @input="updateFormData('endDate', $event.target.value)"
       >
+    </div>
+
+    <!-- 房屋地址 -->
+    <div class="form-group">
+      <label for="selectedPropertyAddress">
+        <i class="fas fa-map-marker-alt"></i>
+        房屋地址
+      </label>
+      <select
+        id="selectedPropertyAddress"
+        class="form-select"
+        :value="formData.selectedPropertyAddress"
+        @change="updateFormData('selectedPropertyAddress', $event.target.value)"
+      >
+        <option v-for="address in store.propertyAddressOptions" :key="address" :value="address">
+          {{ address }}
+        </option>
+      </select>
     </div>
   </div>
   

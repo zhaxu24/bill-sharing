@@ -66,6 +66,7 @@ const loadHistoryItem = (item) => {
   store.bills = item.bills
   store.startDate = item.dateRange.split(' 至 ')[0]
   store.endDate = item.dateRange.split(' 至 ')[1]
+  store.selectedPropertyAddress = item.propertyAddress || store.propertyAddressOptions[0]
   store.allocationMethod = item.allocationMethod
   
   // 显示结果

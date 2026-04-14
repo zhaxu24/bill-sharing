@@ -211,6 +211,7 @@ const printAsPDF = () => {
     '  <div class="report-header">',
     '    <h1>房租费用分摊报表</h1>',
     '    <div class="report-meta">',
+    `      <p><strong>房屋地址：</strong>${store.selectedPropertyAddress}</p>`,
     `      <p><strong>计费周期：</strong>${store.startDate} 至 ${store.endDate}</p>`,
     `      <p><strong>分摊方式：</strong>${getAllocationMethodText(props.result.allocationDetails[0].allocationBasis)}</p>`,
     `      <p><strong>总费用：</strong>¥${props.result.totalBill.toFixed(2)}</p>`,
@@ -295,15 +296,19 @@ const exportAsImage = () => {
     // 基本信息
     ctx.font = '16px Arial'
     ctx.textAlign = 'left'
-    ctx.fillText(`计费周期: ${store.startDate} 至 ${store.endDate}`, 50, 80)
+    const shortAddress = store.selectedPropertyAddress.length > 55
+      ? store.selectedPropertyAddress.substring(0, 55) + '...'
+      : store.selectedPropertyAddress
+    ctx.fillText(`房屋地址: ${shortAddress}`, 50, 80)
+    ctx.fillText(`计费周期: ${store.startDate} 至 ${store.endDate}`, 50, 110)
     
     const methodText = getAllocationMethodText(props.result.allocationDetails[0].allocationBasis)
-    ctx.fillText(`分摊方式: ${methodText}`, 50, 110)
-    ctx.fillText(`总费用: ¥${props.result.totalBill.toFixed(2)}`, 50, 140)
+    ctx.fillText(`分摊方式: ${methodText}`, 50, 140)
+    ctx.fillText(`总费用: ¥${props.result.totalBill.toFixed(2)}`, 50, 170)
     
     // 绘制表格
     const rowHeight = 30
-    const startY = 180
+    const startY = 210
     const columns = ['租户', '分摊金额(元)', '占比', '分摊依据', '说明']
     const columnWidths = [80, 100, 60, 100, 260]
     
@@ -404,7 +409,7 @@ const exportAsImage = () => {
           <div class="summary-value" style="font-size: 1rem; white-space: normal;">
             {{ getAllocationMethodText(result.allocationDetails[0].allocationBasis) }}
           </div>
-          <div class="summary-label">计费周期</div>
+          <div class="summary-label">分摊策略</div>
         </div>
       </div>
       
@@ -412,6 +417,11 @@ const exportAsImage = () => {
       <div class="alert alert-info">
         <i class="fas fa-calendar-alt me-2"></i>
         计费周期: <strong>{{ store.startDate }}</strong> 至 <strong>{{ store.endDate }}</strong>
+      </div>
+
+      <div class="alert alert-info">
+        <i class="fas fa-map-marker-alt me-2"></i>
+        房屋地址: <strong>{{ store.selectedPropertyAddress }}</strong>
       </div>
       
       <!-- 租户分摊明细 -->

@@ -13,6 +13,12 @@ export const useCalculatorStore = defineStore('calculator', {
     ],
     startDate: '',
     endDate: '',
+    propertyAddressOptions: [
+      'Geschwister-Scholl Strasse 6, 91058, Erlangen',
+      'Hertleinstrasse 37, 91052, Erlangen',
+      'Froebelstrasse 11, 91058, Erlangen'
+    ],
+    selectedPropertyAddress: 'Geschwister-Scholl Strasse 6, 91058, Erlangen',
     
     // 租户信息
     tenants: [
@@ -183,6 +189,7 @@ export const useCalculatorStore = defineStore('calculator', {
       if (this.totalBillAmount <= 0) return false
       if (!this.startDate || !this.endDate) return false
       if (new Date(this.startDate) >= new Date(this.endDate)) return false
+      if (!this.selectedPropertyAddress) return false
       
       // 验证租户数据
       if (this.tenants.length === 0) return false
@@ -355,6 +362,7 @@ export const useCalculatorStore = defineStore('calculator', {
       const historyEntry = {
         id: Date.now(),
         dateRange: `${this.startDate} 至 ${this.endDate}`,
+        propertyAddress: this.selectedPropertyAddress,
         totalBill: this.totalBillAmount,
         bills: [...this.bills],
         allocationMethod: this.allocationMethod,
